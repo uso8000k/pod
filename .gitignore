@@ -1,0 +1,4 @@
+Gopkg.*
+bin/
+pkg/
+vendor/
