@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/mgutz/ansi"
 	"github.com/tatsushid/go-fastping"
 	"github.com/urfave/cli"
 )
@@ -65,9 +66,9 @@ func pingger(host string, size int, udp bool) {
 			case <-onIdle:
 				for addr, r := range results {
 					if r == nil {
-						display(host, addr, "NG", 0*time.Second)
+						display(host, addr, 0*time.Second)
 					} else {
-						display(host, addr, "OK", r.rtt)
+						display(host, addr, r.rtt)
 					}
 					results[addr] = nil
 				}
@@ -75,17 +76,16 @@ func pingger(host string, size int, udp bool) {
 			}
 		}
 	} else {
-		display(host, "Unresolved", "NG", 0*time.Second)
+		display(host, "Unresolved", 0*time.Second)
 	}
 }
 
-func display(host string, addr string, pod string, rtt time.Duration) {
+func display(host string, addr string, rtt time.Duration) {
 	if rtt == 0 {
-		fmt.Printf("[%s] HOST: %s IP: %s RTT: --\n", pod, host, addr)
+		fmt.Printf("[%s] HOST: %s IP: %s RTT: --\n", ansi.Color("NG", "red"), host, addr)
 	} else {
-		fmt.Printf("[%s] HOST: %s IP: %s RTT: %v\n", pod, host, addr, rtt)
+		fmt.Printf("[%s] HOST: %s IP: %s RTT: %v\n", ansi.Color("OK", "green"), host, addr, rtt)
 	}
-
 }
 
 func worker(iplist []string, cnt int, slp time.Duration, opt pingopt) {
