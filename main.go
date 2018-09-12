@@ -14,27 +14,35 @@ import (
 	"github.com/urfave/cli"
 )
 
+type pingopt struct {
+	size int
+	udp  bool
+}
+
+type response struct {
+	addr *net.IPAddr
+	rtt  time.Duration
+}
+
 func catch(e error) {
 	if e != nil {
 		log.Fatalf("Error: %v", e)
 	}
 }
 
-func pingger(host string, size int) {
-
-	type response struct {
-		addr *net.IPAddr
-		rtt  time.Duration
-	}
+func pingger(host string, size int, udp bool) {
 
 	p := fastping.NewPinger()
+	if udp {
+		p.Network("udp")
+	}
 
 	ra, err := net.ResolveIPAddr("ip", host)
 	if err == nil {
 		results := make(map[string]*response)
 		results[ra.String()] = nil
 		p.AddIPAddr(ra)
-
+		p.Size = size
 		onRecv, onIdle := make(chan *response), make(chan bool)
 
 		p.OnRecv = func(addr *net.IPAddr, t time.Duration) {
@@ -80,7 +88,7 @@ func display(host string, addr string, pod string, rtt time.Duration) {
 
 }
 
-func worker(iplist []string, cnt int, slp time.Duration, opt map[string]int) {
+func worker(iplist []string, cnt int, slp time.Duration, opt pingopt) {
 	var wg sync.WaitGroup
 	for i := 0; ; {
 		i++
@@ -94,7 +102,7 @@ func worker(iplist []string, cnt int, slp time.Duration, opt map[string]int) {
 			wg.Add(1)
 			go func(ip string) {
 				defer wg.Done()
-				pingger(ip, opt["size"])
+				pingger(ip, opt.size, opt.udp)
 			}(ip)
 		}
 		wg.Wait()
@@ -126,19 +134,10 @@ func main() {
 	app.Usage = "ping to listed target"
 	app.Version = "0.0.1"
 
-	type pingOpt struct {
-		size int
-		udp  bool
-	}
-
 	var (
 		count  int
 		sleep  int
-		size   int
-		udp    bool
-		option map[string]int = map[string]int{
-			"size": 0,
-		}
+		option pingopt
 	)
 
 	app.Flags = []cli.Flag{
@@ -158,12 +157,12 @@ func main() {
 			Name:        "Size, S",
 			Value:       64,
 			Usage:       "Ping size (Byte)",
-			Destination: &size,
+			Destination: &option.size,
 		},
 		cli.BoolFlag{
 			Name:        "UDP, u",
 			Usage:       "use UDP ping",
-			Destination: &udp,
+			Destination: &option.udp,
 		},
 	}
 
@@ -172,8 +171,6 @@ func main() {
 			fmt.Printf("Usage: %s --help\n", os.Args[0])
 			os.Exit(1)
 		}
-
-		option["size"] = size
 
 		worker(readlines(c.Args().Get(0)), count, time.Duration(sleep)*time.Second, option)
 		return nil

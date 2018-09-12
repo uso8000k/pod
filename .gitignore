@@ -2,3 +2,4 @@ Gopkg.*
 bin/
 pkg/
 vendor/
+pod
